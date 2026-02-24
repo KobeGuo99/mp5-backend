@@ -151,7 +151,12 @@ def fetch_data_from_db():
     create_db_table()
 
     sql = """
-        SELECT title, description, image_url, date, location
+        SELECT
+            title,
+            description,
+            image_url,
+            DATE_FORMAT(date, '%Y-%m-%d') AS date,
+            location
         FROM events
         ORDER BY date ASC
     """
@@ -161,11 +166,6 @@ def fetch_data_from_db():
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(sql)
             rows = cursor.fetchall()
-
-        for r in rows:
-            if r.get("date") is not None:
-                r["date"] = str(r["date"])  # 'YYYY-MM-DD'
-
         return rows
     finally:
         connection.close()
