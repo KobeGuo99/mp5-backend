@@ -4,14 +4,11 @@ import pymysql
 from pymysql.err import OperationalError
 import logging
 from flask_cors import CORS
-import json
 
 application = Flask(__name__)
 application.config["JSON_SORT_KEYS"] = False
 CORS(application)
 logging.basicConfig(level=logging.INFO)
-
-LAST_EVENT_PAYLOAD = None
 
 #Endpoint: Health Check
 @application.route('/health', methods=['GET'])
@@ -31,12 +28,6 @@ def create_event():
     """
     try:
         payload = request.get_json()
-
-        write_last_payload_to_db(payload)
-
-        global LAST_EVENT_PAYLOAD
-        LAST_EVENT_PAYLOAD = payload
-        logging.info(f"LAST_EVENT_PAYLOAD={payload}")
         
         required_fields = ["title", "date"]
         if not payload or not all(field in payload for field in required_fields):
@@ -53,16 +44,6 @@ def create_event():
             "detail": str(e)
         }), 500
     
-@application.route('/debug_last_event', methods=['GET'])
-def debug_last_event():
-    connection = get_db_connection()
-    try:
-        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            cursor.execute("SELECT payload_json, created_at FROM debug_last_payload WHERE id=1")
-            row = cursor.fetchone()
-        return jsonify(row or {}), 200
-    finally:
-        connection.close()
 
 #Endpoint: Data Retrieval
 @application.route('/data', methods=['GET'])
@@ -131,28 +112,29 @@ def create_db_table():
     except Exception as e:
         logging.exception("Failed to create or verify the events table")
         raise RuntimeError(f"Table creation failed: {str(e)}")
-
+    
+    
 def insert_data_into_db(payload):
     """
     Stub for database communication.
     Implement this function to insert the data into the database.
     NOTE: Our autograder will automatically insert data into the DB automatically keeping in mind the explained SCHEMA, you dont have to insert your own data.
     """
+    required_vars = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
+    if any(not os.environ.get(v) for v in required_vars):
+        return
+
     create_db_table()
-    # TODO: Implement the database call    
+
     title = payload.get("title")
     date = payload.get("date")
     description = payload.get("description")
     image_url = payload.get("image_url")
     location = payload.get("location")
 
-    if not title or not date:
-        raise ValueError("Missing required fields: title, date")
-
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
-            cursor.execute("ALTER TABLE events MODIFY COLUMN image_url TEXT")
             sql = """
                 INSERT INTO events (title, description, image_url, date, location)
                 VALUES (%s, %s, %s, %s, %s)
@@ -169,15 +151,14 @@ def fetch_data_from_db():
     Implement this function to fetch your data from the database.
     """
     # TODO: Implement the database call
+    required_vars = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
+    if any(not os.environ.get(v) for v in required_vars):
+        return []
+
     create_db_table()
 
     sql = """
-        SELECT
-            title,
-            DATE_FORMAT(date, '%Y-%m-%d') AS date,
-            image_url,
-            description,
-            location
+        SELECT title, description, image_url, date, location
         FROM events
         ORDER BY date ASC
     """
@@ -187,30 +168,14 @@ def fetch_data_from_db():
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(sql)
             rows = cursor.fetchall()
+
+        for r in rows:
+            if r.get("date") is not None:
+                r["date"] = str(r["date"])  # YYYY-MM-DD
         return rows
     finally:
         connection.close()
 
-
-def write_last_payload_to_db(payload):
-    create_db_table()
-    connection = get_db_connection()
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS debug_last_payload (
-                    id INT PRIMARY KEY,
-                    payload_json TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute(
-                "REPLACE INTO debug_last_payload (id, payload_json) VALUES (1, %s)",
-                (json.dumps(payload, ensure_ascii=False),)
-            )
-        connection.commit()
-    finally:
-        connection.close()
 
 if __name__ == '__main__':
     application.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
