@@ -54,7 +54,7 @@ def get_data():
     """
     try:
         data = fetch_data_from_db()
-        return jsonify(data), 200
+        return jsonify({"data": data}), 200
     except NotImplementedError as nie:
         return jsonify({"error": str(nie)}), 501
     except Exception as e:
@@ -132,6 +132,7 @@ def insert_data_into_db(payload):
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
+            cursor.execute("ALTER TABLE events MODIFY COLUMN image_url TEXT")
             sql = """
                 INSERT INTO events (title, description, image_url, date, location)
                 VALUES (%s, %s, %s, %s, %s)
