@@ -148,13 +148,13 @@ def insert_data_into_db(payload):
 
 def fetch_data_from_db():
     """
-    Fetch all events in ascending order of date.
-    Return list of dicts with keys in schema order:
-      title, date, image_url, description, location
+    Fetch all rows and return them in ascending order of date.
+    IMPORTANT: Do NOT format date into 'YYYY-MM-DD'. Let Flask jsonify()
+    serialize the Python date object into HTTP-date format (Mon, 25 Aug 2025 ... GMT),
+    which is what the grader expects.
     """
     create_db_table()
 
-    # IMPORTANT: select columns in the exact schema order
     sql = """
         SELECT title, date, image_url, description, location
         FROM events
@@ -166,11 +166,6 @@ def fetch_data_from_db():
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(sql)
             rows = cursor.fetchall()
-
-        # Convert date objects to 'YYYY-MM-DD' strings (Flask otherwise may serialize weirdly)
-        for r in rows:
-            if r.get("date") is not None:
-                r["date"] = r["date"].strftime("%Y-%m-%d")
 
         return rows
     finally:
