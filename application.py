@@ -11,6 +11,8 @@ application.json.sort_keys = False
 CORS(application)
 logging.basicConfig(level=logging.INFO)
 
+LAST_EVENT_PAYLOAD = None
+
 #Endpoint: Health Check
 @application.route('/health', methods=['GET'])
 def health():
@@ -29,6 +31,11 @@ def create_event():
     """
     try:
         payload = request.get_json()
+
+        global LAST_EVENT_PAYLOAD
+        LAST_EVENT_PAYLOAD = payload
+        logging.info(f"LAST_EVENT_PAYLOAD={payload}")
+        
         required_fields = ["title", "date"]
         if not payload or not all(field in payload for field in required_fields):
             return jsonify({"error": "Missing required fields: 'title' and 'date'"}), 400
@@ -43,6 +50,10 @@ def create_event():
             "error": "During event creation",
             "detail": str(e)
         }), 500
+    
+@application.route('/debug_last_event', methods=['GET'])
+def debug_last_event():
+    return jsonify({"last_event_payload": LAST_EVENT_PAYLOAD}), 200
 
 #Endpoint: Data Retrieval
 @application.route('/data', methods=['GET'])
