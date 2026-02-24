@@ -153,9 +153,9 @@ def fetch_data_from_db():
     sql = """
         SELECT
             title,
-            description,
-            image_url,
             DATE_FORMAT(date, '%Y-%m-%d') AS date,
+            image_url,
+            description,
             location
         FROM events
         ORDER BY date ASC
