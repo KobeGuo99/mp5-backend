@@ -4,6 +4,7 @@ import pymysql
 from pymysql.err import OperationalError
 import logging
 from flask_cors import CORS
+import json
 
 application = Flask(__name__)
 application.config["JSON_SORT_KEYS"] = False
@@ -32,6 +33,8 @@ def create_event():
     try:
         payload = request.get_json()
 
+        write_last_payload_to_db(payload)
+
         global LAST_EVENT_PAYLOAD
         LAST_EVENT_PAYLOAD = payload
         logging.info(f"LAST_EVENT_PAYLOAD={payload}")
@@ -53,7 +56,14 @@ def create_event():
     
 @application.route('/debug_last_event', methods=['GET'])
 def debug_last_event():
-    return jsonify({"last_event_payload": LAST_EVENT_PAYLOAD}), 200
+    connection = get_db_connection()
+    try:
+        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT payload_json, created_at FROM debug_last_payload WHERE id=1")
+            row = cursor.fetchone()
+        return jsonify(row or {}), 200
+    finally:
+        connection.close()
 
 #Endpoint: Data Retrieval
 @application.route('/data', methods=['GET'])
@@ -179,6 +189,27 @@ def fetch_data_from_db():
             cursor.execute(sql)
             rows = cursor.fetchall()
         return rows
+    finally:
+        connection.close()
+
+
+def write_last_payload_to_db(payload):
+    create_db_table()
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS debug_last_payload (
+                    id INT PRIMARY KEY,
+                    payload_json TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute(
+                "REPLACE INTO debug_last_payload (id, payload_json) VALUES (1, %s)",
+                (json.dumps(payload, ensure_ascii=False),)
+            )
+        connection.commit()
     finally:
         connection.close()
 
