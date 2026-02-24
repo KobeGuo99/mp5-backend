@@ -149,19 +149,17 @@ def fetch_data_from_db():
     create_db_table()
 
     sql = """
-        SELECT id, title, description, image_url, date, location
+        SELECT title, description, image_url, date, location
         FROM events
-        ORDER BY date ASC, id ASC
+        ORDER BY date ASC
     """
 
     connection = get_db_connection()
     try:
-        # Use DictCursor so we return dicts with column names
         with connection.cursor(pymysql.cursors.DictCursor) as cursor:
             cursor.execute(sql)
             rows = cursor.fetchall()
 
-        # Ensure date is JSON serializable consistently
         for r in rows:
             if r.get("date") is not None:
                 r["date"] = str(r["date"])  # 'YYYY-MM-DD'
