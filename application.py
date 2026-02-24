@@ -7,6 +7,7 @@ from flask_cors import CORS
 
 application = Flask(__name__)
 application.config["JSON_SORT_KEYS"] = False
+application.json.sort_keys = False
 CORS(application)
 logging.basicConfig(level=logging.INFO)
 
@@ -135,9 +136,15 @@ def insert_data_into_db(payload):
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
-            sql = """
-                INSERT INTO events (title, description, image_url, date, location)
-                VALUES (%s, %s, %s, %s, %s)
+            sql = sql = """
+                SELECT
+                    title,
+                    DATE_FORMAT(date, '%Y-%m-%d') AS date,
+                    image_url,
+                    description,
+                    location
+                FROM events
+                ORDER BY date ASC
             """
             cursor.execute(sql, (title, description, image_url, date, location))
         connection.commit()
