@@ -54,7 +54,7 @@ def get_data():
     """
     try:
         data = fetch_data_from_db()
-        return jsonify({"data": data}), 200
+        return jsonify(data), 200
     except NotImplementedError as nie:
         return jsonify({"error": str(nie)}), 501
     except Exception as e:
