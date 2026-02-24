@@ -7,6 +7,7 @@ from flask_cors import CORS
 
 application = Flask(__name__)
 application.config["JSON_SORT_KEYS"] = False
+application.json.sort_keys = False
 CORS(application)
 logging.basicConfig(level=logging.INFO)
 
