@@ -118,8 +118,28 @@ def insert_data_into_db(payload):
     """
     create_db_table()
     # TODO: Implement the database call    
-    
-    raise NotImplementedError("Database insert function not implemented.")
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            sql = """
+            INSERT INTO events (title, description, image_url, date, location)
+            VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(
+                sql,
+                (
+                    payload.get("title"),
+                    payload.get("description"),
+                    payload.get("image_url"),
+                    payload.get("date"),
+                    payload.get("location")
+                )
+            )
+        connection.commit()
+        connection.close()
+    except Exception as e:
+        logging.exception("Insert failed")
+        raise RuntimeError(f"Insert failed: {str(e)}")
 
 #Database Function Stub
 def fetch_data_from_db():
@@ -128,8 +148,34 @@ def fetch_data_from_db():
     Implement this function to fetch your data from the database.
     """
     # TODO: Implement the database call
-    
-    raise NotImplementedError("Database fetch function not implemented.")
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            sql = """
+            SELECT id, title, description, image_url, date, location
+            FROM events
+            ORDER BY date ASC
+            """
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+        connection.close()
+
+        data = []
+        for row in rows:
+            data.append({
+                "id": row[0],
+                "title": row[1],
+                "description": row[2],
+                "image_url": row[3],
+                "date": str(row[4]) if row[4] else None,
+                "location": row[5]
+            })
+
+        return data
+
+    except Exception as e:
+        logging.exception("Fetch failed")
+        raise RuntimeError(f"Fetch failed: {str(e)}")
 
 if __name__ == '__main__':
     application.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
