@@ -117,55 +117,46 @@ def create_db_table():
     
 def insert_data_into_db(payload):
     """
-    Stub for database communication.
-    Implement this function to insert the data into the database.
-    NOTE: Our autograder will automatically insert data into the DB automatically keeping in mind the explained SCHEMA, you dont have to insert your own data.
+    Insert a new event row into the events table.
+    Payload keys (optional except title/date): title, date, image_url, description, location
     """
-    required_vars = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
-    if any(not os.environ.get(v) for v in required_vars):
-        return
-
     create_db_table()
 
     title = payload.get("title")
     date = payload.get("date")
-    description = payload.get("description")
     image_url = payload.get("image_url")
+    description = payload.get("description")
     location = payload.get("location")
+
+    # title/date already validated in route, but keep it safe
+    if not title or not date:
+        raise ValueError("Missing required fields: title, date")
+
+    sql = """
+        INSERT INTO events (title, date, image_url, description, location)
+        VALUES (%s, %s, %s, %s, %s)
+    """
 
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
-            sql = sql = """
-                SELECT
-                    title,
-                    DATE_FORMAT(date, '%Y-%m-%d') AS date,
-                    image_url,
-                    description,
-                    location
-                FROM events
-                ORDER BY date ASC
-            """
-            cursor.execute(sql, (title, description, image_url, date, location))
+            cursor.execute(sql, (title, date, image_url, description, location))
         connection.commit()
     finally:
         connection.close()
 
-#Database Function Stub
+
 def fetch_data_from_db():
     """
-    Stub for database communication.
-    Implement this function to fetch your data from the database.
+    Fetch all events in ascending order of date.
+    Return list of dicts with keys in schema order:
+      title, date, image_url, description, location
     """
-    # TODO: Implement the database call
-    required_vars = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
-    if any(not os.environ.get(v) for v in required_vars):
-        return []
-
     create_db_table()
 
+    # IMPORTANT: select columns in the exact schema order
     sql = """
-        SELECT title, description, image_url, date, location
+        SELECT title, date, image_url, description, location
         FROM events
         ORDER BY date ASC
     """
@@ -176,9 +167,11 @@ def fetch_data_from_db():
             cursor.execute(sql)
             rows = cursor.fetchall()
 
+        # Convert date objects to 'YYYY-MM-DD' strings (Flask otherwise may serialize weirdly)
         for r in rows:
             if r.get("date") is not None:
-                r["date"] = str(r["date"])  # YYYY-MM-DD
+                r["date"] = r["date"].strftime("%Y-%m-%d")
+
         return rows
     finally:
         connection.close()
